@@ -63,7 +63,8 @@ Check out [a quick tour](https://loco.rs/docs/getting-started/tour/) or [the com
 - [x] Create/update/get/delete product
 - [x] Add slug to each product
 - [x] Get product by slug
-- [] Replace author_id placeholder with a real implementation
-- [] Generate a new model for product meta data
-- [] Save product meta data
-- [] Cart management based on woocommerce cart and its new Store Api
+- [ ] Generate a new model for product meta data
+- [ ] Save product meta data
+- [ ] Cart management based on woocommerce cart and its new Store Api
+- [ ] Implement authentication via **Cookies**
+- [ ] Replace author_id placeholder with a real implementation
