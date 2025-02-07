@@ -110,6 +110,21 @@ pub async fn show(
 }
 
 #[debug_handler]
+pub async fn show_by_slug(
+    Path(slug): Path<String>,
+    ViewEngine(v): ViewEngine<TeraView>,
+    State(ctx): State<AppContext>,
+) -> Result<Response> {
+    let item = Entity::find()
+        .filter(Column::Slug.eq(slug))
+        .one(&ctx.db)
+        .await?;
+    let product = item.ok_or_else(|| Error::NotFound)?;
+
+    views::products::show(&v, &product)
+}
+
+#[debug_handler]
 pub async fn add(
     State(ctx): State<AppContext>,
     Form(mut params): Form<Params>,
@@ -143,7 +158,8 @@ pub fn routes() -> Routes {
         .add("/", post(add))
         .add("new", get(new))
         .add(":id", get(show))
+        .add("p/:slug", get(show_by_slug))
         .add(":id/edit", get(edit))
-        .add(":id", delete(remove))
+        // .add(":id", delete(remove))
         .add(":id", post(update))
 }

@@ -62,7 +62,7 @@ Check out [a quick tour](https://loco.rs/docs/getting-started/tour/) or [the com
 
 - [x] Create/update/get/delete product
 - [x] Add slug to each product
-- [] Get product by slug
+- [x] Get product by slug
 - [] Replace author_id placeholder with a real implementation
 - [] Generate a new model for product meta data
 - [] Save product meta data
