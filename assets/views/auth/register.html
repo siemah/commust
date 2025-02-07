@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}
+Create new account
+{% endblock title %}
+
+{% block content %}
+<h1>Create new products</h1>
+<div class="mb-10">
+  <form action="/auth/register" method="post">
+    <div class="mb-5">
+      <div>
+        <label>Name</label>
+        <br />
+        <input id="name" name="name" type="text" value="" required />
+        {% if errors.email %}
+        <p class="p-0 m-0 text-red-500">{{ errors.email }}</p>
+        {% endif %}
+      </div>
+      <div>
+        <label>Email</label>
+        <br />
+        <input id="email" name="email" type="email" value="" required />
+      </div>
+      <div>
+        <label>Password</label>
+        <br />
+        <input id="password" name="password" type="password" value="" />
+      </div>
+    </div>
+    <div>
+      <button class=" text-xs py-3 px-6 rounded-lg bg-gray-900 text-white" type="submit">Submit</button>
+    </div>
+  </form>
+  <br />
+  <a href="/products"></a>
+</div>
+{% endblock content %}

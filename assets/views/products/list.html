@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}
+List of products
+{% endblock title %}
+
+{% block content %}
+<h1>products</h1>
+<div class="mb-10">
+    {% for item in items %}
+    <div class="mb-5">
+        <div>
+
+            <label><b>{{"title" | capitalize }}:</b> {{item.title}}</label>
+        </div>
+        <div>
+
+            <label><b>{{"excerpt" | capitalize }}:</b> {{item.excerpt}}</label>
+        </div>
+        <div>
+
+            <label><b>{{"status" | capitalize }}:</b> {{item.status}}</label>
+        </div>
+        <div>
+
+            <label><b>{{"product_type" | capitalize }}:</b> {{item.product_type}}</label>
+        </div>
+        <a href="/products/{{ item.id }}/edit">Edit</a>
+        <a href="/products/{{ item.id }}">View</a>
+    </div>
+    {% endfor %}
+    <br />
+    <br />
+    <a href="/products/new">New products</a>
+</div>
+{% endblock content %}
