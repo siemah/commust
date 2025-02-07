@@ -8,6 +8,7 @@ use sea_orm::{sea_query::Order, QueryOrder};
 use serde::{Deserialize, Serialize};
 extern crate slug;
 use slug::slugify;
+use tracing::info;
 
 use crate::{
     models::_entities::products::{ActiveModel, Column, Entity, Model},
@@ -69,16 +70,22 @@ pub async fn new(
     views::products::create(&v)
 }
 
+async fn update_product(ctx: &AppContext, params: Params, id: i32) -> Result<Model> {
+    let item = load_item(&ctx, id).await?;
+    let mut item = item.into_active_model();
+    params.update(&mut item);
+    let res = item.update(&ctx.db).await?;
+
+    Ok(res)
+}
+
 #[debug_handler]
 pub async fn update(
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
     Form(params): Form<Params>,
 ) -> Result<Redirect> {
-    let item = load_item(&ctx, id).await?;
-    let mut item = item.into_active_model();
-    params.update(&mut item);
-    item.update(&ctx.db).await?;
+    update_product(&ctx, params, id).await?;
     Ok(Redirect::to("../products"))
 }
 
@@ -118,10 +125,7 @@ pub async fn add(
 
     params.slug = Some(slug);
 
-    let item = load_item(&ctx, res.id).await?;
-    let mut item = item.into_active_model();
-    params.update_with_slug(&mut item);
-    item.update(&ctx.db).await?;
+    update_product(&ctx, params, res.id).await?;
 
     Ok(Redirect::to("products"))
 }
