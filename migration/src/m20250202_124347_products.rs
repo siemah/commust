@@ -15,6 +15,7 @@ impl MigrationTrait for Migration {
                     .col(string_null(Products::Excerpt))
                     .col(string_null(Products::Status))
                     .col(string_null(Products::ProductType))
+                    .col(string_null(Products::Slug).unique_key())
                     .col(integer(Products::AuthorId))
                     .foreign_key(
                         ForeignKey::create()
@@ -45,7 +46,7 @@ enum Products {
     Status,
     ProductType,
     AuthorId,
-    
+    Slug,
 }
 
 #[derive(DeriveIden)]

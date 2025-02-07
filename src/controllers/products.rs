@@ -6,6 +6,8 @@ use axum::{extract::Form, response::Redirect};
 use loco_rs::prelude::*;
 use sea_orm::{sea_query::Order, QueryOrder};
 use serde::{Deserialize, Serialize};
+extern crate slug;
+use slug::slugify;
 
 use crate::{
     models::_entities::products::{ActiveModel, Column, Entity, Model},
@@ -18,10 +20,21 @@ pub struct Params {
     pub excerpt: Option<String>,
     pub status: Option<String>,
     pub product_type: Option<String>,
+    pub slug: Option<String>,
 }
 
 impl Params {
     fn update(&self, item: &mut ActiveModel) {
+        item.title = Set(self.title.clone());
+        item.excerpt = Set(self.excerpt.clone());
+        item.status = Set(self.status.clone());
+        item.product_type = Set(self.product_type.clone());
+        // todo: this is just a placeholder so needed to implement
+        item.author_id = Set(1);
+    }
+
+    fn update_with_slug(&self, item: &mut ActiveModel) {
+        item.slug = Set(self.slug.clone());
         item.title = Set(self.title.clone());
         item.excerpt = Set(self.excerpt.clone());
         item.status = Set(self.status.clone());
@@ -90,13 +103,26 @@ pub async fn show(
 }
 
 #[debug_handler]
-pub async fn add(State(ctx): State<AppContext>, Form(params): Form<Params>) -> Result<Redirect> {
-    // todo: add author id to save it in product row
+pub async fn add(
+    State(ctx): State<AppContext>,
+    Form(mut params): Form<Params>,
+) -> Result<Redirect> {
     let mut item = ActiveModel {
         ..Default::default()
     };
+
     params.update(&mut item);
-    item.insert(&ctx.db).await?;
+
+    let res = item.insert(&ctx.db).await?;
+    let slug = slugify(format!("{} {}", &params.title, res.id));
+
+    params.slug = Some(slug);
+
+    let item = load_item(&ctx, res.id).await?;
+    let mut item = item.into_active_model();
+    params.update_with_slug(&mut item);
+    item.update(&ctx.db).await?;
+
     Ok(Redirect::to("products"))
 }
 

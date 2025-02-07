@@ -17,3 +17,5 @@ target/
 *.pdb
 
 *.sqlite
+
+.DS_Store

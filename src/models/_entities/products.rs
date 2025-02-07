@@ -14,6 +14,7 @@ pub struct Model {
     pub excerpt: Option<String>,
     pub status: Option<String>,
     pub product_type: Option<String>,
+    pub slug: Option<String>,
     pub author_id: i32,
 }
 

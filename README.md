@@ -61,6 +61,7 @@ Check out [a quick tour](https://loco.rs/docs/getting-started/tour/) or [the com
 ## Raodmap
 
 - [] Create/update/get/delete product
+- [] Add slug to each product
 - [] Replace author_id placeholder with a real implementation
 - [] Generate a new model for product meta data
 - [] Save product meta data
