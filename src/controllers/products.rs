@@ -8,7 +8,6 @@ use sea_orm::{sea_query::Order, QueryOrder};
 use serde::{Deserialize, Serialize};
 extern crate slug;
 use slug::slugify;
-use tracing::info;
 
 use crate::{
     models::_entities::products::{ActiveModel, Column, Entity, Model},

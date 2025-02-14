@@ -26,7 +26,7 @@ List of products
             <label><b>{{"product_type" | capitalize }}:</b> {{item.product_type}}</label>
         </div>
         <a href="/products/{{ item.id }}/edit">Edit</a>
-        <a href="/products/{{ item.id }}">View</a>
+        <a href="/products/p/{{ item.slug }}">View</a>
     </div>
     {% endfor %}
     <br />

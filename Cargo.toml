@@ -41,6 +41,8 @@ axum-extra = { version = "0.9", features = ["cookie"] }
 fluent-templates = { version = "0.8.0", features = ["tera"] }
 unic-langid = "0.9.4"
 slug = "0.1.6"
+sha2 = { version = "0.10.8", default-features = false }
+cookie = "0.18.1"
 # /view engine
 
 [[bin]]

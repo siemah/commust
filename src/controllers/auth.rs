@@ -169,7 +169,7 @@ async fn old_register(
 ) -> Result<Response> {
     let res = users::Model::create_with_password(&ctx.db, &params).await;
 
-    let user = match res {
+    let _user = match res {
         Ok(user) => user,
         Err(err) => {
             tracing::info!(
@@ -287,7 +287,7 @@ async fn login_via_form(
         return Ok(Redirect::to("/auth/login"));
     }
 
-    let jwt_secret = ctx.config.get_jwt_config()?;
+    let _jwt_secret = ctx.config.get_jwt_config()?;
 
     // let token = user
     //     .generate_jwt(&jwt_secret.secret, &jwt_secret.expiration)
