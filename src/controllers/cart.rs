@@ -5,9 +5,15 @@ use axum::{debug_handler, extract::Form, response::Redirect};
 use axum_extra::extract::CookieJar;
 use axum_session::{Session, SessionNullPool};
 use loco_rs::prelude::{cookie::Cookie, Uuid, *};
+use sea_orm::{FromQueryResult, Order, QueryOrder, QuerySelect, SelectColumns};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tracing::info;
+
+use crate::{
+    models::_entities::products::{Column, Entity},
+    views,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CartParams {
@@ -33,7 +39,7 @@ fn generate_hash<'a>(params: &Vec<CartSession>, session_id: &'a String) -> Strin
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct CartSession {
+pub struct CartSession {
     id: i32,
     qty: i32,
     // variations: Option<Vec>,
@@ -93,6 +99,63 @@ pub async fn add(
     ))
 }
 
+#[derive(FromQueryResult)]
+struct PartialProductModel {
+    pub id: i32,
+    pub name: String,
+    pub slug: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PartialCartProduct {
+    pub id: i32,
+    pub slug: String,
+    pub name: String,
+    pub quantity: i32,
+}
+
+#[debug_handler]
+pub async fn show(
+    session: Session<SessionNullPool>,
+    ViewEngine(v): ViewEngine<TeraView>,
+    State(ctx): State<AppContext>,
+) -> Result<Response> {
+    let cart_session: Vec<CartSession> = session.get("commust_cart_items").unwrap_or(vec![]);
+    let ids = cart_session.iter().map(|x| x.id).collect::<Vec<i32>>();
+    let products_list = Entity::find()
+        .select_only()
+        .column(Column::Id)
+        .column(Column::Slug)
+        .column_as(Column::Title, "name")
+        .order_by(Column::Id, Order::Asc)
+        .filter(Column::Id.is_in(ids))
+        .into_model::<PartialProductModel>()
+        .all(&ctx.db)
+        .await?;
+    let products = products_list
+        .into_iter()
+        .map(|product| {
+            let quantity = cart_session
+                .iter()
+                .find(|x| x.id == product.id)
+                .unwrap()
+                .qty;
+            PartialCartProduct {
+                id: product.id,
+                slug: product.slug.unwrap(),
+                name: product.name,
+                quantity,
+            }
+        })
+        .collect::<Vec<PartialCartProduct>>();
+
+    println!("{:#?}", products);
+    views::cart::show(&v, &products)
+}
+
 pub fn routes() -> Routes {
-    Routes::new().prefix("cart/").add("add", post(add))
+    Routes::new()
+        .prefix("cart/")
+        .add("/", get(show))
+        .add("add-item", post(add))
 }
