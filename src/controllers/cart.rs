@@ -40,6 +40,7 @@ fn generate_hash<'a>(params: &Vec<CartSession>, session_id: &'a String) -> Strin
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CartSession {
+    key: String,
     id: i32,
     qty: i32,
     // variations: Option<Vec>,
@@ -65,6 +66,7 @@ pub async fn add(
         cart_session[index].qty += params.qty;
     } else {
         let new_cart_item = CartSession {
+            key: Uuid::new_v4().to_string(),
             id: params.id,
             qty: params.qty,
         };
@@ -73,6 +75,7 @@ pub async fn add(
 
     let items = cart_session.len();
     let cart_hash = generate_hash(&cart_session, &session_id);
+    println!("{:#?}", cart_session);
     session.set("commust_cart_items", cart_session);
 
     info!("Product {} added {} times to cart", params.id, params.qty);
