@@ -2,5 +2,6 @@
 
 pub mod prelude;
 
+pub mod postmetas;
 pub mod products;
 pub mod users;

@@ -14,12 +14,15 @@ pub struct Model {
     pub excerpt: Option<String>,
     pub status: Option<String>,
     pub product_type: Option<String>,
+    #[sea_orm(unique)]
     pub slug: Option<String>,
     pub author_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(has_many = "super::postmetas::Entity")]
+    Postmetas,
     #[sea_orm(
         belongs_to = "super::users::Entity",
         from = "Column::AuthorId",
@@ -28,6 +31,12 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Users,
+}
+
+impl Related<super::postmetas::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Postmetas.def()
+    }
 }
 
 impl Related<super::users::Entity> for Entity {
