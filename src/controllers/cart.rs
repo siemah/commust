@@ -5,7 +5,7 @@ use axum::{debug_handler, extract::Form, response::Redirect};
 use axum_extra::extract::CookieJar;
 use axum_session::{Session, SessionNullPool};
 use loco_rs::prelude::{cookie::Cookie, Uuid, *};
-use sea_orm::{FromQueryResult, Order, QueryOrder, QuerySelect, SelectColumns};
+use sea_orm::{FromQueryResult, Order, QueryOrder, QuerySelect};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tracing::info;
@@ -111,6 +111,7 @@ struct PartialProductModel {
 
 #[derive(Debug, Serialize)]
 pub struct PartialCartProduct {
+    pub key: String,
     pub id: i32,
     pub slug: String,
     pub name: String,
@@ -138,16 +139,13 @@ pub async fn show(
     let products = products_list
         .into_iter()
         .map(|product| {
-            let quantity = cart_session
-                .iter()
-                .find(|x| x.id == product.id)
-                .unwrap()
-                .qty;
+            let current_cart_item = cart_session.iter().find(|x| x.id == product.id).unwrap();
             PartialCartProduct {
+                key: current_cart_item.key.clone(),
                 id: product.id,
                 slug: product.slug.unwrap(),
                 name: product.name,
-                quantity,
+                quantity: current_cart_item.qty,
             }
         })
         .collect::<Vec<PartialCartProduct>>();
@@ -156,9 +154,63 @@ pub async fn show(
     views::cart::show(&v, &products)
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CartRemoveItemParams {
+    pub key: String,
+}
+
+#[debug_handler]
+pub async fn remove(
+    session: Session<SessionNullPool>,
+    jar: CookieJar,
+    State(_ctx): State<AppContext>,
+    Form(params): Form<CartRemoveItemParams>,
+) -> Result<(CookieJar, Redirect)> {
+    let session_id = match jar.get("commust_session_id") {
+        Some(cookie) => cookie.value().to_string(),
+        None => Uuid::new_v4().to_string(),
+    };
+    let mut cart_session: Vec<CartSession> = session.get("commust_cart_items").unwrap_or(vec![]);
+
+    cart_session = cart_session
+        .into_iter()
+        .filter(|x| x.key != params.key)
+        .collect();
+    println!("{:#?}", cart_session);
+
+    let items = cart_session.len();
+    let cart_hash = generate_hash(&cart_session, &session_id);
+    println!("{:#?}", cart_session);
+    session.set("commust_cart_items", cart_session);
+
+    info!("Product {} removed from cart", params.key);
+
+    let hash_cookie = Cookie::build(("commust_cart_hash", cart_hash))
+        .path("/")
+        .http_only(true)
+        .secure(false);
+    let items_cookie = Cookie::build(("commust_cart_items", items.to_string()))
+        .path("/")
+        .http_only(true)
+        .secure(false);
+    let session_cookie = Cookie::build(("commust_session_id", session_id.to_string()))
+        .path("/")
+        .http_only(true)
+        .secure(false);
+    let redirect_to = format!("/cart");
+
+    Ok((
+        // the updated jar must be returned for the changes
+        // to be included in the response
+        jar.add(hash_cookie).add(items_cookie).add(session_cookie),
+        Redirect::to(redirect_to.as_str()),
+    ))
+}
+
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("cart/")
         .add("/", get(show))
         .add("add-item", post(add))
+        .add("remove-item", post(remove))
 }
