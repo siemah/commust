@@ -71,8 +71,9 @@ Check out [a quick tour](https://loco.rs/docs/getting-started/tour/) or [the com
   - [x] Generate a hash based on cart content: session_id:id*qty+id2*qty2... and save it on `commust_cart_hash`
   - [x] Save number of items added 2cart in `commust_cart_items` cookie
   - [x] Generate a session id for each user and save it in `coomust_session_id` cookie use middleware if possible
-  - [ ] Remove item from cart
-  - [ ] Update cart such as quantity
+  - [x] Show cart details
+  - [x] Remove item from cart
+  - [x] Update cart item quantity
   - [ ] Check product availability(instock)
 
 - [ ] Customer orders:
