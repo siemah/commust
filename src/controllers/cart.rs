@@ -75,7 +75,6 @@ pub async fn add(
 
     let items = cart_session.len();
     let cart_hash = generate_hash(&cart_session, &session_id);
-    println!("{:#?}", cart_session);
     session.set("commust_cart_items", cart_session);
 
     info!("Product {} added {} times to cart", params.id, params.qty);
@@ -113,7 +112,7 @@ struct PartialProductModel {
 pub struct PartialCartProduct {
     pub key: String,
     pub id: i32,
-    pub slug: String,
+    pub slug: Option<String>,
     pub name: String,
     pub quantity: i32,
 }
@@ -143,14 +142,13 @@ pub async fn show(
             PartialCartProduct {
                 key: current_cart_item.key.clone(),
                 id: product.id,
-                slug: product.slug.unwrap(),
+                slug: product.slug,
                 name: product.name,
                 quantity: current_cart_item.qty,
             }
         })
         .collect::<Vec<PartialCartProduct>>();
 
-    println!("{:#?}", products);
     views::cart::show(&v, &products)
 }
 
@@ -176,14 +174,66 @@ pub async fn remove(
         .into_iter()
         .filter(|x| x.key != params.key)
         .collect();
-    println!("{:#?}", cart_session);
 
     let items = cart_session.len();
     let cart_hash = generate_hash(&cart_session, &session_id);
-    println!("{:#?}", cart_session);
     session.set("commust_cart_items", cart_session);
 
-    info!("Product {} removed from cart", params.key);
+    info!("Cart item {} removed from cart", params.key);
+
+    let hash_cookie = Cookie::build(("commust_cart_hash", cart_hash))
+        .path("/")
+        .http_only(true)
+        .secure(false);
+    let items_cookie = Cookie::build(("commust_cart_items", items.to_string()))
+        .path("/")
+        .http_only(true)
+        .secure(false);
+    let session_cookie = Cookie::build(("commust_session_id", session_id.to_string()))
+        .path("/")
+        .http_only(true)
+        .secure(false);
+    let redirect_to = format!("/cart");
+
+    Ok((
+        // the updated jar must be returned for the changes
+        // to be included in the response
+        jar.add(hash_cookie).add(items_cookie).add(session_cookie),
+        Redirect::to(redirect_to.as_str()),
+    ))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CartUpdateItemParams {
+    pub key: String,
+    pub qty: i32,
+}
+
+#[debug_handler]
+pub async fn update(
+    session: Session<SessionNullPool>,
+    jar: CookieJar,
+    State(_ctx): State<AppContext>,
+    Form(params): Form<CartUpdateItemParams>,
+) -> Result<(CookieJar, Redirect)> {
+    let session_id = match jar.get("commust_session_id") {
+        Some(cookie) => cookie.value().to_string(),
+        None => Uuid::new_v4().to_string(),
+    };
+    let mut cart_session: Vec<CartSession> = session.get("commust_cart_items").unwrap_or(vec![]);
+
+    let item_position = cart_session.iter().position(|x| x.key == params.key);
+
+    if item_position.is_some() {
+        let index = item_position.unwrap();
+        cart_session[index].qty = params.qty;
+    }
+
+    let items = cart_session.len();
+    let cart_hash = generate_hash(&cart_session, &session_id);
+    session.set("commust_cart_items", cart_session);
+
+    info!("Cart item {} updated its quantity to {}", params.key, params.qty);
 
     let hash_cookie = Cookie::build(("commust_cart_hash", cart_hash))
         .path("/")
@@ -213,4 +263,5 @@ pub fn routes() -> Routes {
         .add("/", get(show))
         .add("add-item", post(add))
         .add("remove-item", post(remove))
+        .add("update-item", post(update))
 }

@@ -11,6 +11,13 @@ Cart
     {% for item in items %}
     <div class="flex flex-col gap-2">
         <h2 class="text-lg">{{ item.name }} &times; {{ item.quantity }}</h2>
+        <form action="/cart/update-item" method="post">
+            <input type="hidden" name="key" value="{{ item.key }}" />
+            <input type="number" name="qty" value="{{ item.quantity }}" />
+            <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                Update
+            </button>
+    </form>
         <form action="/cart/remove-item" method="post">
             <input type="hidden" name="key" value="{{ item.key }}" />
             <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
