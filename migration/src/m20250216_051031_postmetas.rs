@@ -18,7 +18,7 @@ impl MigrationTrait for Migration {
                         ForeignKey::create()
                             .name("fk-postmetas-products_ids")
                             .from(Postmetas::Table, Postmetas::ProductId)
-                            .to(ProductIds::Table, ProductIds::Id)
+                            .to(Products::Table, Products::Id)
                             .on_delete(ForeignKeyAction::Cascade)
                             .on_update(ForeignKeyAction::Cascade),
                     )
@@ -40,12 +40,11 @@ enum Postmetas {
     Id,
     MetaKey,
     MetaValue,
-    ProductId,
-    
+    ProductId,    
 }
 
 #[derive(DeriveIden)]
-enum ProductIds {
+enum Products {
     Table,
     Id,
 }
