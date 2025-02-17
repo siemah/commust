@@ -8,28 +8,60 @@ Create products
 <h1>Create new products</h1>
 <div class="mb-10">
     <form action="/products" method="post">
-        <div class="mb-5">
+      <div class="mb-5">
         <div>
             <label>title</label>
             <br />
             <input id="title" name="title" type="text" value="" required/>
-            </div>
+        </div>
         <div>
             <label>excerpt</label>
             <br />
             <input id="excerpt" name="excerpt" type="text" value=""/>
-            </div>
+        </div>
         <div>
             <label>status</label>
             <br />
             <input id="status" name="status" type="text" value=""/>
-            </div>
+        </div>
         <div>
             <label>product_type</label>
             <br />
             <input id="product_type" name="product_type" type="text" value=""/>
-            </div>
         </div>
+
+        <div class="flex flex-col gap-2">
+
+            <h2 class="text-lg">Meta data</h2>
+            <div>
+              <label for="regular_price">Regular price</label>
+              <br />
+              <input id="regular_price" name="_regular_price" type="number" value=""/>
+            </div>
+            <div>
+              <label for="sale_price">Sale price</label>
+              <br />
+              <input id="sale_price" name="_sale_price" type="number" value=""/>
+            </div>
+            <div>
+              <label for="_sku">SKU</label>
+              <br />
+              <input id="_sku" name="_sku" type="text" value=""/>
+            </div>
+
+
+
+            <div>
+              <label for="_stock">stock qty</label>
+              <br />
+              <input id="_stock"" name="_stock" type="number" value=""/>
+            </div>
+
+
+
+        </div>
+
+      </div>
         <div>
             <button class=" text-xs py-3 px-6 rounded-lg bg-gray-900 text-white" type="submit">Submit</button>
         </div>
