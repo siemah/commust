@@ -11,7 +11,7 @@ use sha2::{Digest, Sha256};
 use tracing::info;
 
 use crate::{
-    models::_entities::products::{Column, Entity},
+    models::{_entities::{postmetas, products::{Column, Entity}}},
     views,
 };
 
@@ -46,21 +46,89 @@ pub struct CartSession {
     // variations: Option<Vec>,
 }
 
+#[derive(FromQueryResult)]
+struct PartialMetaModel {
+    // pub id: i32,
+    pub meta_key: Option<String>,
+    pub meta_value: Option<String>,
+}
+
 #[debug_handler]
 pub async fn add(
     session: Session<SessionNullPool>,
     jar: CookieJar,
-    State(_ctx): State<AppContext>,
+    State(ctx): State<AppContext>,
     Form(params): Form<CartParams>,
 ) -> Result<(CookieJar, Redirect)> {
+    let redirect_to = format!("/products/p/{}", &params.slug);
+    let item = postmetas::Entity::find()
+        .select_only()
+        .column(postmetas::Column::MetaKey)
+        .column(postmetas::Column::MetaValue)
+        .filter(postmetas::Column::MetaKey.eq("_stock_status"))
+        .filter(postmetas::Column::ProductId.eq(params.id))
+        .into_model::<PartialMetaModel>()
+        .one(&ctx.db)
+        .await?;
+    
+    // this check if the product exists 
+    if item.is_none() {
+        return Ok((jar, Redirect::to("/products")));
+    } 
+    
+    let stock_status = item.unwrap().meta_value.unwrap();
+    
+    if stock_status == "outofstock" {
+        // todo: add a flash message to the session
+        let errors = serde_json::json!({
+            "global": "The requested quantity is not available",
+        });
+        session.set("errors", errors);
+
+        return Ok((jar, Redirect::to(redirect_to.as_str())));
+    }
+
+    let mut cart_session: Vec<CartSession> = session.get("commust_cart_items").unwrap_or(vec![]);
+    let item_position = cart_session.iter().position(|x| x.id == params.id);
+
+    if stock_status == "instock" {
+        let stock_qty = postmetas::Entity::find()
+            .select_only()
+            .column(postmetas::Column::MetaValue)
+            .filter(postmetas::Column::MetaKey.eq("_stock"))
+            .filter(postmetas::Column::ProductId.eq(params.id))
+            .into_model::<PartialMetaModel>()
+            .one(&ctx.db)
+            .await?;
+        let stock_qty = stock_qty.unwrap().meta_value.unwrap().parse::<i32>().unwrap();
+        
+        // note: add current qty(already in cart) to the requested qty as well
+        
+        let current_qty = if item_position.is_some() {
+            let index = item_position.unwrap();
+            cart_session[index].qty
+        } else {
+            0
+        };
+
+        if stock_qty < params.qty + current_qty {
+            // todo: set error in session
+            let errors = serde_json::json!({
+                "global": "The requested quantity is not available",
+            });
+            session.set("errors", errors);
+
+            return Ok((jar, Redirect::to(redirect_to.as_str())));
+        }
+    }
+
+    // todo: check if variations are valid
+
     let session_id = match jar.get("commust_session_id") {
         Some(cookie) => cookie.value().to_string(),
         None => Uuid::new_v4().to_string(),
     };
-    let mut cart_session: Vec<CartSession> = session.get("commust_cart_items").unwrap_or(vec![]);
-
-    let item_position = cart_session.iter().position(|x| x.id == params.id);
-
+    
     if item_position.is_some() {
         let index = item_position.unwrap();
         cart_session[index].qty += params.qty;
@@ -91,7 +159,6 @@ pub async fn add(
         .path("/")
         .http_only(true)
         .secure(false);
-    let redirect_to = format!("/products/p/{}", &params.slug);
 
     Ok((
         // the updated jar must be returned for the changes

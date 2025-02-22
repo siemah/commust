@@ -16,8 +16,8 @@ pub fn list(v: &impl ViewRenderer, items: &Vec<products::Model>) -> Result<Respo
 /// # Errors
 ///
 /// When there is an issue with rendering the view.
-pub fn show(v: &impl ViewRenderer, item: &products::Model) -> Result<Response> {
-    format::render().view(v, "products/show.html", data!({"item": item}))
+pub fn show(v: &impl ViewRenderer, item: &products::Model, errors: &serde_json::Value) -> Result<Response> {
+    format::render().view(v, "products/show.html", data!({"item": item, "errors": errors}))
 }
 
 /// Render a products create form.

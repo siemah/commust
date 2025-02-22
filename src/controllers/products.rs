@@ -3,20 +3,21 @@
 #![allow(clippy::unused_async)]
 use axum::debug_handler;
 use axum::{extract::Form, response::Redirect};
+use axum_session::{Session, SessionNullPool};
 use loco_rs::prelude::*;
-use migration::{value, Expr};
-use sea_orm::{Condition, DbBackend, FromQueryResult, QuerySelect, QueryTrait, UpdateResult};
+use migration::{Expr};
+use sea_orm::{FromQueryResult, QuerySelect, UpdateResult};
 use sea_orm::{sea_query::Order, QueryOrder};
 use serde::{Deserialize, Deserializer, Serialize};
 extern crate slug;
 use slug::slugify;
+use tracing::info;
 
 use crate::{
     models::_entities::products::{ActiveModel, Column, Entity, Model},
     views,
 };
-
-use crate::models::_entities::postmetas::{self,ActiveModel as PmActiveModel, Entity as PmEntity};
+use crate::models::_entities::postmetas::{self, ActiveModel as PmActiveModel, Entity as PmEntity};
 
 fn empty_string_as_none<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
 where
@@ -44,10 +45,8 @@ pub struct Params {
 
     // postmetas fields
     pub _sku: Option<String>,
-
     #[serde(deserialize_with = "empty_string_as_none")]
     pub _regular_price: Option<f32>,
-    
     #[serde(deserialize_with = "empty_string_as_none")]
     pub _sale_price: Option<String>,
     #[serde(deserialize_with = "empty_string_as_none")]
@@ -237,17 +236,15 @@ async fn save_product_meta(ctx: &AppContext, id: i32, params: Params) -> Result<
                 ..Default::default()
             };
             meta_data.push(meta_manage_stock);
-
         } else {
             let mut old_manage_stock: PmActiveModel = old_manage_stock.unwrap().into();
             old_manage_stock.meta_value = Set(Some(true.to_string()));
             old_manage_stock.update(&ctx.db).await?;
         }
     } else {
-        println!("manage stock is not set");
-
+        // delete _stock to avoid parsing error of an empty string
         if old_stock.is_some() {
-            let mut old_stock: PmActiveModel = old_stock.unwrap().into();
+            let old_stock: PmActiveModel = old_stock.unwrap().into();
             old_stock.delete(&ctx.db).await?;
         }
 
@@ -298,6 +295,8 @@ pub async fn update(
     item.update(&ctx.db).await?;
 
     save_product_meta(&ctx, id, params).await?;
+    info!("Product updated {:?}", id);
+
     let redirect_url = format!("/products/{}/edit", id); 
 
     Ok(Redirect::to(redirect_url.as_str()))
@@ -320,13 +319,13 @@ pub async fn edit(
         .await?;
 
     let product = ProductView::build(item, meta_data);
-println!("{:#?}", product);    
+
     views::products::edit(&v, &product)
 }
 
-#[derive(FromQueryResult, Debug)]
+#[derive(FromQueryResult)]
 struct PartialMetaModel {
-    pub id: i32,
+    // pub id: i32,
     pub meta_key: Option<String>,
     pub meta_value: Option<String>,
 }
@@ -414,6 +413,7 @@ impl ProductView {
 #[debug_handler]
 pub async fn show(
     Path(id): Path<i32>,
+    session: Session<SessionNullPool>,
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
@@ -422,14 +422,16 @@ pub async fn show(
     // vectore/array to object using data! or json! macro from serde
      
     // todo: merge item and meta_data object into one object
-
+    let errors = session.get::<serde_json::Value>("errors").unwrap_or(data!({}));
+    session.set("errors", data!({}));
     
-    views::products::show(&v, &item)
+    views::products::show(&v, &item, &errors)
 }
 
 #[debug_handler]
 pub async fn show_by_slug(
     Path(slug): Path<String>,
+    session: Session<SessionNullPool>,
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
@@ -438,14 +440,16 @@ pub async fn show_by_slug(
         .one(&ctx.db)
         .await?;
     let product = item.ok_or_else(|| Error::NotFound)?;
+    let errors = session.get::<serde_json::Value>("errors").unwrap_or(data!({}));
+    session.set("errors", data!({}));
 
-    views::products::show(&v, &product)
+    views::products::show(&v, &product, &errors)
 }
 
 #[debug_handler]
 pub async fn add(
     State(ctx): State<AppContext>,
-    Form(mut params): Form<Params>,
+    Form(params): Form<Params>,
 ) -> Result<Redirect> {
     let mut item = ActiveModel {
         ..Default::default()
@@ -458,12 +462,16 @@ pub async fn add(
     generate_product_slug(&ctx, res.id, &params.title).await?;
     save_product_meta(&ctx, res.id, params).await?;
     
+    info!("Product added: {:#?}", res);
+    
     Ok(Redirect::to("products"))
 }
 
 #[debug_handler]
 pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Response> {
     load_item(&ctx, id).await?.delete(&ctx.db).await?;
+    info!("Product removed: {}", id);
+    
     format::empty()
 }
 
@@ -476,6 +484,6 @@ pub fn routes() -> Routes {
         .add(":id", get(show))
         .add("p/:slug", get(show_by_slug))
         .add(":id/edit", get(edit))
-        // .add(":id", delete(remove))
+        .add(":id", delete(remove))
         .add(":id", post(update))
 }
