@@ -1,6 +1,6 @@
 use loco_rs::prelude::*;
 
-use crate::models::_entities::products;
+use crate::{controllers::products::ProductView, models::_entities::products};
 
 /// Render a list view of products.
 ///
@@ -34,6 +34,6 @@ pub fn create(v: &impl ViewRenderer) -> Result<Response> {
 /// # Errors
 ///
 /// When there is an issue with rendering the view.
-pub fn edit(v: &impl ViewRenderer, item: &products::Model) -> Result<Response> {
+pub fn edit(v: &impl ViewRenderer, item: &ProductView) -> Result<Response> {
     format::render().view(v, "products/edit.html", data!({"item": item}))
 }
