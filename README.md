@@ -63,8 +63,8 @@ Check out [a quick tour](https://loco.rs/docs/getting-started/tour/) or [the com
 - [x] Create/update/get/delete product
 - [x] Add slug to each product
 - [x] Get product by slug
-- [ ] Generate a new model for product meta data
-- [ ] Save product meta data
+- [x] Generate a new model for post(product) meta data
+- [x] Save(update) product meta data
 
 - [ ] Cart management based on woocommerce cart and its new Store Api:
 
@@ -74,7 +74,7 @@ Check out [a quick tour](https://loco.rs/docs/getting-started/tour/) or [the com
   - [x] Show cart details
   - [x] Remove item from cart
   - [x] Update cart item quantity
-  - [ ] Check product availability(instock)
+  - [x] Check product availability(instock)
 
 - [ ] Customer orders:
 
@@ -85,4 +85,6 @@ Check out [a quick tour](https://loco.rs/docs/getting-started/tour/) or [the com
 
 - [ ] Implement authentication via **Cookies**
 - [ ] Replace author_id placeholder with a real implementation
-- [ ] 
+- [ ] Product variations
+- [ ] Product categories
+- [ ] Product attributes

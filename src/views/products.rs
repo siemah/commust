@@ -1,6 +1,6 @@
 use loco_rs::prelude::*;
 
-use crate::models::_entities::products;
+use crate::{controllers::products::ProductView, models::_entities::products};
 
 /// Render a list view of products.
 ///
@@ -16,8 +16,8 @@ pub fn list(v: &impl ViewRenderer, items: &Vec<products::Model>) -> Result<Respo
 /// # Errors
 ///
 /// When there is an issue with rendering the view.
-pub fn show(v: &impl ViewRenderer, item: &products::Model) -> Result<Response> {
-    format::render().view(v, "products/show.html", data!({"item": item}))
+pub fn show(v: &impl ViewRenderer, item: &products::Model, errors: &serde_json::Value) -> Result<Response> {
+    format::render().view(v, "products/show.html", data!({"item": item, "errors": errors}))
 }
 
 /// Render a products create form.
@@ -34,6 +34,6 @@ pub fn create(v: &impl ViewRenderer) -> Result<Response> {
 /// # Errors
 ///
 /// When there is an issue with rendering the view.
-pub fn edit(v: &impl ViewRenderer, item: &products::Model) -> Result<Response> {
+pub fn edit(v: &impl ViewRenderer, item: &ProductView) -> Result<Response> {
     format::render().view(v, "products/edit.html", data!({"item": item}))
 }

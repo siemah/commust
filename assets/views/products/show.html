@@ -19,6 +19,11 @@
     <div>
         <label>product_type: {{item.product_type}}</label>
     </div>
+    
+    {% if errors.global %}
+      <p class="bg-red-600 text-red-100 px-4 py-2 m-0 rounded">{{ errors.global }}</p>
+    {% endif %}
+
     <form class="flex flex-row items-end gap-4 mt-4" action="/cart/add-item" method="post">
         <input type="hidden" name="slug" value="{{ item.slug }}">
         <input type="hidden" name="id" value="{{ item.id }}">
