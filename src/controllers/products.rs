@@ -8,34 +8,19 @@ use loco_rs::prelude::*;
 use migration::{Expr};
 use sea_orm::{FromQueryResult, QuerySelect, UpdateResult};
 use sea_orm::{sea_query::Order, QueryOrder};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 extern crate slug;
 use slug::slugify;
 use tracing::info;
-
+use axum_extra::extract::Form as FormExtra;
 use crate::{
     models::_entities::products::{ActiveModel, Column, Entity, Model},
     views,
 };
 use crate::models::_entities::postmetas::{self, ActiveModel as PmActiveModel, Entity as PmEntity};
+use crate::helpers::serdes::{empty_string_as_none, from_attributes_values};
 
-fn empty_string_as_none<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
-where
-    D: Deserializer<'de>,
-    T: std::str::FromStr,
-    T::Err: std::fmt::Display,
-{
-    let s: String = String::deserialize(deserializer)?;
-    if s.is_empty() {
-        Ok(None)
-    } else {
-        s.parse()
-            .map(Some)
-            .map_err(serde::de::Error::custom)
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Params {
     pub title: String,
     pub excerpt: Option<String>,
@@ -51,6 +36,17 @@ pub struct Params {
     pub _sale_price: Option<String>,
     #[serde(deserialize_with = "empty_string_as_none")]
     pub _stock: Option<f32>,
+    
+    // attributes
+    #[serde(default)]
+    pub attributes_names: Vec<String>,
+    #[serde(default, deserialize_with = "from_attributes_values")]
+    pub attributes_values: Vec<Vec<String>>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+struct AttributeNames {
+    attributes_names: Vec<String>,
 }
 
 impl Params {
@@ -59,7 +55,7 @@ impl Params {
         item.excerpt = Set(self.excerpt.clone());
         item.status = Set(self.status.clone());
         item.product_type = Set(self.product_type.clone());
-        // todo: this is just a placeholder so needed to implement
+        // todo: this is just a placeholder so it must be implemented properly
         item.author_id = Set(1);
     }
 }
@@ -103,7 +99,6 @@ async fn generate_product_slug(ctx: &AppContext, id: i32, title: &String) -> Res
 async fn save_product_meta(ctx: &AppContext, id: i32, params: Params) -> Result<()> {
     let mut meta_data:Vec<PmActiveModel> = vec![];
 
-    // todo: update product metadata such as price, stock, etc
     if params._regular_price.is_some() {
         let old_price = PmEntity::find()
             .filter(postmetas::Column::ProductId.eq(id))
@@ -277,6 +272,50 @@ async fn save_product_meta(ctx: &AppContext, id: i32, params: Params) -> Result<
         }
     }
 
+
+    // todo: save attributes
+    let attribute_name = "_product_attributes";
+    let old_attribute = PmEntity::find()
+        .filter(postmetas::Column::ProductId.eq(id))
+        .filter(postmetas::Column::MetaKey.eq(attribute_name))
+        .one(&ctx.db)
+        .await?;
+    
+    if params.attributes_names.len() == params.attributes_values.len() && params.attributes_names.len() > 0 {
+        let mut meta_value = vec![];
+        for (i, name) in params.attributes_names.iter().enumerate() {
+            let value = &params.attributes_values[i];
+            meta_value.push(
+                data!({
+                    "name": name,
+                    "slug": slugify(name),
+                    "position": i,
+                    "is_visible": true,
+                    "is_variation": false,
+                    "is_taxonomy": false,
+                    "value": value,
+                })
+            ); 
+        }
+           
+        if old_attribute.is_none() {
+            let meta_attribute = PmActiveModel {
+                product_id: Set(id),
+                meta_key: Set(Some(attribute_name.to_string())),
+                meta_value: Set(Some(data!(meta_value).to_string())),
+                ..Default::default()
+            };
+            meta_data.push(meta_attribute);
+        } else {
+            let mut old_attribute: PmActiveModel = old_attribute.unwrap().into();
+            old_attribute.meta_value = Set(Some(data!(meta_value).to_string()));
+            old_attribute.update(&ctx.db).await?;
+        }
+    } else if old_attribute.is_some() {
+        let old_attribute: PmActiveModel = old_attribute.unwrap().into();
+        old_attribute.delete(&ctx.db).await?;
+    }
+
     if meta_data.len() > 0 {
         PmEntity::insert_many(meta_data).exec(&ctx.db).await?;
     }
@@ -346,6 +385,20 @@ pub struct ProductView{
     pub price: Option<f32>,
     pub stock: Option<f32>,
     pub stock_status: String,
+    pub attributes: Vec<ProductAttribute>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+struct ProductAttribute {
+    name: String,
+    slug: String,
+    position: u8,
+    #[serde(rename = "is_visible")]
+    visible: bool,
+    #[serde(rename = "is_variation")]
+    variation: bool,
+    #[serde(rename = "value")]
+    options: Vec<String>,
 }
 
 impl Default for ProductView {
@@ -363,6 +416,7 @@ impl Default for ProductView {
             price: None,
             stock: None,
             stock_status: "".to_string(),
+            attributes: vec![],
         }
     } 
 }
@@ -394,6 +448,15 @@ impl ProductView {
                 Some("_stock_status") => {
                     product.stock_status = meta.meta_value.unwrap();
                 }
+                Some("_product_attributes") => { 
+                    let attributes:Vec<ProductAttribute> = serde_json::from_str(
+                            meta.meta_value
+                                .unwrap()
+                                .as_str()
+                        )
+                        .unwrap_or(vec![]);
+                    product.attributes = attributes;
+                },
                 _ => {}
             }
         }
@@ -449,7 +512,7 @@ pub async fn show_by_slug(
 #[debug_handler]
 pub async fn add(
     State(ctx): State<AppContext>,
-    Form(params): Form<Params>,
+    FormExtra(params): FormExtra<Params>,
 ) -> Result<Redirect> {
     let mut item = ActiveModel {
         ..Default::default()
@@ -464,7 +527,9 @@ pub async fn add(
     
     info!("Product added: {:#?}", res);
     
-    Ok(Redirect::to("products"))
+    let redirect_url = format!("/products/{}/edit", res.id);
+    
+    Ok(Redirect::to(redirect_url.as_str()))
 }
 
 #[debug_handler]

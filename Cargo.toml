@@ -36,7 +36,7 @@ uuid = { version = "1.6.0", features = ["v4"] }
 include_dir = "0.7"
 # session and cookie
 axum_session = { version = "0.10.1", default-features = false }
-axum-extra = { version = "0.9", features = ["cookie"] }
+axum-extra = { version = "0.9", features = ["cookie", "form"] }
 # view engine i18n
 fluent-templates = { version = "0.8.0", features = ["tera"] }
 unic-langid = "0.9.4"
