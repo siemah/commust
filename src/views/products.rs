@@ -34,6 +34,9 @@ pub fn create(v: &impl ViewRenderer) -> Result<Response> {
 /// # Errors
 ///
 /// When there is an issue with rendering the view.
-pub fn edit(v: &impl ViewRenderer, item: &ProductView) -> Result<Response> {
-    format::render().view(v, "products/edit.html", data!({"item": item}))
+pub fn edit(v: &impl ViewRenderer, item: ProductView) -> Result<Response> {
+    let ProductView { attributes, .. } = &item;
+    let attributes_values = item.get_attributes_values();
+    
+    format::render().view(v, "products/edit.html", data!({"attributes": attributes, "attributes_values": attributes_values, "item": item}))
 }

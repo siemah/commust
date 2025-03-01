@@ -64,13 +64,13 @@ Edit products: {{ item.name }}
               <button type="button" class="js-attr-btn px-6 py-2 text-base border-2 hover:bg-blue-500 hover:text-white border-blue-500 text-blue-500 rounded-lg">Add</button>
               <div class="js-attr-container flex flex-col gap-4">
                 
-                {% for attribute in item.attributes %}
+                {% for attribute in attributes %}
                   <div class="flex gap-2">
-                    <input type="text" name="attributes_names" value="{{ attribute.name }}" />
-                    <input type="text" name="attributes_values" value="{{ attribute.value }}" />
+                    <input type="text" name="attributes_names" value="{{ attribute.slug }}" />
+                    <input type="text" name="attributes_values" value="{{ attributes_values[loop.index0] }}" />
                   </div>
                 {% endfor %}
-   
+
               </div>   
 
             </div> 

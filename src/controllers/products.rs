@@ -327,7 +327,7 @@ async fn save_product_meta(ctx: &AppContext, id: i32, params: Params) -> Result<
 pub async fn update(
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
-    Form(params): Form<Params>,
+    FormExtra(params): FormExtra<Params>
 ) -> Result<Redirect> {
     let mut item = load_item(&ctx, id).await?.into_active_model();
     params.update(&mut item);
@@ -359,7 +359,7 @@ pub async fn edit(
 
     let product = ProductView::build(item, meta_data);
 
-    views::products::edit(&v, &product)
+    views::products::edit(&v, product)
 }
 
 #[derive(FromQueryResult)]
@@ -389,16 +389,16 @@ pub struct ProductView{
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-struct ProductAttribute {
-    name: String,
-    slug: String,
-    position: u8,
+pub struct ProductAttribute {
+    pub name: String,
+    pub slug: String,
+    pub position: u8,
     #[serde(rename = "is_visible")]
-    visible: bool,
+    pub visible: bool,
     #[serde(rename = "is_variation")]
-    variation: bool,
+    pub variation: bool,
     #[serde(rename = "value")]
-    options: Vec<String>,
+    pub options: Vec<String>,
 }
 
 impl Default for ProductView {
@@ -470,6 +470,10 @@ impl ProductView {
         };
 
         product
+    }
+
+    pub fn get_attributes_values(&self) -> Vec<String> {
+        self.attributes.iter().map(|attr| attr.options.join("|")).collect::<Vec<String>>()
     }
 }
 
